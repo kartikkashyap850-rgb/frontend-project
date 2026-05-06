@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RentEase – Furniture & Appliance Rental</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+
+<body>
+
+    <!-- ===== AUTH MODAL ===== -->
+    <div id="authModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <button type="button" class="modal-close" onclick="closeModal('authModal')">&times;</button>
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" onclick="switchTab('login')">Login</button>
+                <button type="button" class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
+            </div>
+
+            <div id="loginForm" class="auth-form">
+                <h2>Welcome Back</h2>
+                <p class="auth-sub">Log in to manage your rentals</p>
+                <input type="email" placeholder="Email address" name="email" class="form-input" required />
+                <input type="password" placeholder="Password" name="password" class="form-input" required />
+                <button type="button" class="btn-primary full-width" onclick="loginUser()">Login</button>
+                <p class="auth-link">Don't have an account? <a href="#" onclick="switchTab('signup'); return false;">Sign up</a></p>
+            </div>
+
+            <div id="signupForm" class="auth-form hidden">
+                <h2>Create Account</h2>
+                <p class="auth-sub">Join thousands of happy renters</p>
+                <input type="text" placeholder="Full Name" name="fullName" class="form-input" required />
+                <input type="email" placeholder="Email address" name="email" class="form-input" required />
+                <input type="tel" placeholder="Phone Number" name="phone" class="form-input" required />
+                <input type="text" placeholder="City" name="city" class="form-input" required />
+                <input type="password" placeholder="Password" name="password" class="form-input" required />
+                <button type="button" class="btn-primary full-width" onclick="signupUser()">Create Account</button>
+                <p class="auth-link">Already a member? <a href="#" onclick="switchTab('login'); return false;">Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CART MODAL ===== -->
+    <div id="cartModal" class="modal-overlay hidden">
+        <div class="modal-box cart-modal">
+            <button type="button" class="modal-close" onclick="closeModal('cartModal')">&times;</button>
+            <h2><i class="fas fa-shopping-cart"></i> Your Cart</h2>
+            <div id="cartItems" class="cart-items-list"></div>
+            <div class="cart-summary" id="cartSummary"></div>
+            <button type="button" class="btn-primary full-width" onclick="proceedCheckout()">Proceed to Checkout</button>
+        </div>
+    </div>
+
+    <!-- ===== CHECKOUT MODAL ===== -->
+    <div id="checkoutModal" class="modal-overlay hidden">
+        <div class="modal-box checkout-modal">
+            <button type="button" class="modal-close" onclick="closeModal('checkoutModal')">&times;</button>
+            <h2>Confirm Your Rental</h2>
+            <div class="checkout-steps">
+                <div class="step active" id="step1-indicator">1. Address</div>
+                <div class="step-line"></div>
+                <div class="step" id="step2-indicator">2. Schedule</div>
+                <div class="step-line"></div>
+                <div class="step" id="step3-indicator">3. Confirm</div>
+            </div>
+
+            <!--
+                FIX: Added class "active" so step 1 is visible when the modal first opens.
+                     CSS hides all .checkout-step by default (display:none); without "active"
+                     the first step would be invisible if the modal were ever opened directly.
+            -->
+            <div id="checkout-step-1" class="checkout-step active">
+                <h3>Delivery Address</h3>
+                <input type="text" placeholder="Full Name" name="fullName" class="form-input" required />
+                <input type="text" placeholder="Address Line 1" name="address1" class="form-input" required />
+                <input type="text" placeholder="City" name="city" class="form-input" required />
+                <input type="text" placeholder="PIN Code" name="pincode" class="form-input" required />
+                <button type="button" class="btn-primary" onclick="nextStep(2)">Continue &rarr;</button>
+            </div>
+
+            <div id="checkout-step-2" class="checkout-step hidden">
+                <h3>Schedule Delivery</h3>
+                <label class="form-label" for="deliveryDate">Preferred Delivery Date</label>
+                <input type="date" class="form-input" id="deliveryDate" name="deliveryDate" required />
+                <label class="form-label" for="deliveryTimeSlot">Time Slot</label>
+                <select class="form-input" id="deliveryTimeSlot" name="timeSlot" required>
+                    <option value="">Select Time Slot</option>
+                    <option value="morning">Morning (9 AM – 12 PM)</option>
+                    <option value="afternoon">Afternoon (12 PM – 4 PM)</option>
+                    <option value="evening">Evening (4 PM – 8 PM)</option>
+                </select>
+                <button type="button" class="btn-secondary" onclick="nextStep(1)">← Back</button>
+                <button type="button" class="btn-primary" onclick="nextStep(3)">Continue &rarr;</button>
+            </div>
+
+            <div id="checkout-step-3" class="checkout-step hidden">
+                <h3>Order Summary</h3>
+                <div id="finalOrderSummary"></div>
+                <div class="order-total" id="orderTotal"></div>
+                <button type="button" class="btn-secondary" onclick="nextStep(2)">← Back</button>
+                <button type="button" class="btn-primary" onclick="placeOrder()">Place Order ✓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SUCCESS MODAL ===== -->
+    <div id="successModal" class="modal-overlay hidden">
+        <div class="modal-box success-modal">
+            <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+            <h2>Order Placed!</h2>
+            <p>Your rental has been confirmed. We'll deliver your items on the scheduled date.</p>
+            <p class="order-id">Order ID: <strong id="generatedOrderId"></strong></p>
+            <button class="btn-primary" onclick="closeAllModals()">Continue Shopping</button>
+        </div>
+    </div>
+
+    <!-- ===== MAINTENANCE MODAL ===== -->
+    <div id="maintenanceModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal('maintenanceModal')">&times;</button>
+            <h2><i class="fas fa-tools"></i> Request Maintenance</h2>
+            <p class="auth-sub">We'll send a technician within 24 hours</p>
+            <label class="form-label" for="maintenanceProduct">Select Product</label>
+            <select class="form-input" id="maintenanceProduct" name="product" aria-label="Maintenance Product" required>
+                <option value="">Select Product</option>
+                <option value="refrigerator">Refrigerator - REF001</option>
+                <option value="washing-machine">Washing Machine - WM002</option>
+                <option value="smart-tv">Smart TV - TV003</option>
+                <option value="sofa-set">Sofa Set - SF004</option>
+            </select>
+            <label class="form-label" for="maintenanceIssueType">Issue Type</label>
+            <select class="form-input" id="maintenanceIssueType" name="issueType" aria-label="Issue Type" required>
+                <option value="">Issue Type</option>
+                <option value="not-working">Not Working</option>
+                <option value="physical-damage">Physical Damage</option>
+                <option value="noise-vibration">Noise/Vibration</option>
+                <option value="other">Other</option>
+            </select>
+            <label class="form-label" for="maintenanceDescription">Describe the issue</label>
+            <textarea class="form-input" id="maintenanceDescription" name="description" rows="3"
+                placeholder="Describe the issue..." required></textarea>
+            <button type="button" class="btn-primary full-width" onclick="submitMaintenance()">Submit Request</button>
+        </div>
+    </div>
+
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <span class="logo-icon"><i class="fas fa-couch"></i></span>
+                <span class="logo-text">RentEase</span>
+            </a>
+
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#hero" onclick="closeMobileMenu()">Home</a></li>
+                <li><a href="#categories" onclick="closeMobileMenu()">Categories</a></li>
+                <li><a href="#products" onclick="closeMobileMenu()">Products</a></li>
+                <li><a href="#how-it-works" onclick="closeMobileMenu()">How It Works</a></li>
+                <li><a href="#dashboard" onclick="closeMobileMenu()">My Rentals</a></li>
+                <li><a href="#admin" onclick="closeMobileMenu()">Admin</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <button type="button" class="cart-btn" onclick="openModal('cartModal')">
+                    <i class="fas fa-shopping-cart" aria-hidden="true"></i>
+                    <span class="cart-badge" id="cartBadge">0</span>
+                </button>
+                <button type="button" class="btn-outline" id="authBtn" onclick="openModal('authModal')">Login</button>
+                <button type="button" class="hamburger" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu" title="Toggle navigation menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero" id="hero">
+        <div class="hero-bg">
+            <div class="hero-blob blob1"></div>
+            <div class="hero-blob blob2"></div>
+            <div class="hero-blob blob3"></div>
+        </div>
+        <div class="hero-container">
+            <div class="hero-badge">
+                <span><i class="fas fa-star"></i> Trusted by 50,000+ renters</span>
+            </div>
+            <h1 class="hero-title">
+                Furnish Your Home,<br />
+                <span class="hero-highlight">Without Buying It</span>
+            </h1>
+            <p class="hero-subtitle">
+                Premium furniture & appliances on monthly rental. Move-in ready, hassle-free, and 100% flexible.
+            </p>
+            <div class="hero-cta">
+                <button class="btn-primary hero-btn" onclick="scrollToSection('products')">
+                    Browse Products <i class="fas fa-arrow-right"></i>
+                </button>
+                <button class="btn-ghost hero-btn" onclick="scrollToSection('how-it-works')">
+                    How It Works <i class="fas fa-play-circle"></i>
+                </button>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-num">10K+</span>
+                    <span class="stat-label">Products</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-num">15+</span>
+                    <span class="stat-label">Cities</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-num">50K+</span>
+                    <span class="stat-label">Happy Renters</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-num">24h</span>
+                    <span class="stat-label">Delivery</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-image-col">
+            <div class="hero-card floating">
+                <div class="hero-product-img">
+                    <i class="fas fa-couch"></i>
+                </div>
+                <div class="hero-card-info">
+                    <span class="hero-card-name">Premium Sofa</span>
+                    <span class="hero-card-price">₹799/mo</span>
+                </div>
+            </div>
+            <div class="hero-card floating delay-1">
+                <div class="hero-product-img fridge">
+                    <i class="fas fa-snowflake"></i>
+                </div>
+                <div class="hero-card-info">
+                    <span class="hero-card-name">Refrigerator</span>
+                    <span class="hero-card-price">₹599/mo</span>
+                </div>
+            </div>
+            <div class="hero-card floating delay-2">
+                <div class="hero-product-img tv">
+                    <i class="fas fa-tv"></i>
+                </div>
+                <div class="hero-card-info">
+                    <span class="hero-card-name">Smart TV 43"</span>
+                    <span class="hero-card-price">₹499/mo</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== CATEGORIES ===== -->
+    <section class="categories" id="categories">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Browse By</span>
+                <h2 class="section-title">Product Categories</h2>
+                <p class="section-sub">Find everything you need for a comfortable home</p>
+            </div>
+            <div class="category-grid">
+                <div class="category-card active" onclick="filterCategory('all')">
+                    <div class="cat-icon"><i class="fas fa-th-large"></i></div>
+                    <span>All Products</span>
+                    <small>42 items</small>
+                </div>
+                <div class="category-card" onclick="filterCategory('furniture')">
+                    <div class="cat-icon"><i class="fas fa-couch"></i></div>
+                    <span>Furniture</span>
+                    <small>18 items</small>
+                </div>
+                <div class="category-card" onclick="filterCategory('appliances')">
+                    <div class="cat-icon"><i class="fas fa-blender"></i></div>
+                    <span>Appliances</span>
+                    <small>16 items</small>
+                </div>
+                <div class="category-card" onclick="filterCategory('electronics')">
+                    <div class="cat-icon"><i class="fas fa-laptop"></i></div>
+                    <span>Electronics</span>
+                    <small>8 items</small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== PRODUCTS ===== -->
+    <section class="products-section" id="products">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Catalog</span>
+                <h2 class="section-title">Our Products</h2>
+            </div>
+
+            <div class="products-toolbar">
+                <div class="search-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search products..." class="search-input"
+                        oninput="searchProducts()" />
+                </div>
+                <div class="filter-wrap">
+                    <label for="sortSelect">Sort by:</label>
+                    <select id="sortSelect" class="sort-select" onchange="sortProducts()">
+                        <option value="default">Default</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="name">Name A–Z</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="products-grid" id="productsGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== HOW IT WORKS ===== -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Simple Process</span>
+                <h2 class="section-title">How RentEase Works</h2>
+                <p class="section-sub">Get your furniture delivered in 4 easy steps</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">01</div>
+                    <div class="step-icon"><i class="fas fa-search"></i></div>
+                    <h3>Browse & Choose</h3>
+                    <p>Explore our wide catalog of premium furniture and appliances. Filter by category, price, or
+                        tenure.</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-chevron-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">02</div>
+                    <div class="step-icon"><i class="fas fa-calendar-check"></i></div>
+                    <h3>Select Plan</h3>
+                    <p>Choose your rental tenure — 3, 6, or 12 months. Longer plans get bigger discounts!</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-chevron-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">03</div>
+                    <div class="step-icon"><i class="fas fa-truck"></i></div>
+                    <h3>Delivery & Setup</h3>
+                    <p>We deliver and install at your doorstep. Same-day and next-day delivery available.</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-chevron-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">04</div>
+                    <div class="step-icon"><i class="fas fa-sync-alt"></i></div>
+                    <h3>Extend or Return</h3>
+                    <p>Extend your plan anytime or schedule a free pickup when you're done. Zero hassle!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== PLANS ===== -->
+    <section class="plans-section" id="plans">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Pricing</span>
+                <h2 class="section-title">Flexible Rental Plans</h2>
+                <p class="section-sub">More months = more savings</p>
+            </div>
+            <div class="plans-grid">
+                <div class="plan-card">
+                    <div class="plan-badge">Starter</div>
+                    <div class="plan-duration">3 Months</div>
+                    <div class="plan-discount">Base Price</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Free delivery & pickup</li>
+                        <li><i class="fas fa-check"></i> 1 free maintenance</li>
+                        <li><i class="fas fa-check"></i> Easy extension</li>
+                        <li class="muted"><i class="fas fa-times"></i> No relocation support</li>
+                    </ul>
+                    <button class="btn-outline full-width" onclick="scrollToSection('products')">Get Started</button>
+                </div>
+                <div class="plan-card featured">
+                    <div class="plan-badge popular">Most Popular</div>
+                    <div class="plan-duration">6 Months</div>
+                    <div class="plan-discount">Save 10%</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Free delivery & pickup</li>
+                        <li><i class="fas fa-check"></i> 3 free maintenances</li>
+                        <li><i class="fas fa-check"></i> Easy extension</li>
+                        <li><i class="fas fa-check"></i> Free relocation support</li>
+                    </ul>
+                    <button class="btn-primary full-width" onclick="scrollToSection('products')">Get Started</button>
+                </div>
+                <div class="plan-card">
+                    <div class="plan-badge">Best Value</div>
+                    <div class="plan-duration">12 Months</div>
+                    <div class="plan-discount">Save 20%</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Free delivery & pickup</li>
+                        <li><i class="fas fa-check"></i> Unlimited maintenance</li>
+                        <li><i class="fas fa-check"></i> Easy extension</li>
+                        <li><i class="fas fa-check"></i> Free relocation support</li>
+                    </ul>
+                    <button class="btn-outline full-width" onclick="scrollToSection('products')">Get Started</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== USER DASHBOARD ===== -->
+    <section class="dashboard-section" id="dashboard">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">My Account</span>
+                <h2 class="section-title">Rental Dashboard</h2>
+                <p class="section-sub">Track and manage all your active rentals</p>
+            </div>
+            <div class="dashboard-grid">
+                <div class="dashboard-sidebar">
+                    <div class="user-profile">
+                        <div class="user-avatar"><i class="fas fa-user"></i></div>
+                        <div class="user-info">
+                            <span class="user-name" id="dashboardUsername">Guest User</span>
+                            <span class="user-city">Meerut, UP</span>
+                        </div>
+                    </div>
+                    <ul class="dash-menu">
+                        <li class="active" onclick="showDashTab('active-rentals', this)">
+                            <i class="fas fa-box-open"></i> Active Rentals
+                        </li>
+                        <li onclick="showDashTab('history', this)">
+                            <i class="fas fa-history"></i> Rental History
+                        </li>
+                        <li onclick="showDashTab('maintenance', this)">
+                            <i class="fas fa-tools"></i> Maintenance
+                        </li>
+                        <li onclick="openModal('maintenanceModal')">
+                            <i class="fas fa-plus-circle"></i> Request Maintenance
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="dashboard-content">
+                    <div id="active-rentals" class="dash-tab active">
+                        <h3>Active Rentals</h3>
+                        <div class="rental-cards" id="activeRentalsContainer"></div>
+                    </div>
+                    <div id="history" class="dash-tab">
+                        <h3>Rental History</h3>
+                        <div class="rental-cards" id="historyContainer"></div>
+                    </div>
+                    <div id="maintenance" class="dash-tab">
+                        <h3>Maintenance Requests</h3>
+                        <div class="rental-cards" id="maintenanceContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== ADMIN DASHBOARD ===== -->
+    <section class="admin-section" id="admin">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Admin Panel</span>
+                <h2 class="section-title">Admin Dashboard</h2>
+                <p class="section-sub">Manage inventory, orders, and analytics</p>
+            </div>
+
+            <div class="admin-kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon orange"><i class="fas fa-box"></i></div>
+                    <div class="kpi-info">
+                        <span class="kpi-value" id="kpiActiveRentals">284</span>
+                        <span class="kpi-label">Active Rentals</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="fas fa-rupee-sign"></i></div>
+                    <div class="kpi-info">
+                        <span class="kpi-value" id="kpiMRR">₹4.2L</span>
+                        <span class="kpi-label">Monthly Revenue</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="fas fa-users"></i></div>
+                    <div class="kpi-info">
+                        <span class="kpi-value">1,840</span>
+                        <span class="kpi-label">Total Users</span>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="fas fa-wrench"></i></div>
+                    <div class="kpi-info">
+                        <span class="kpi-value">12</span>
+                        <span class="kpi-label">Pending Maintenance</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-panels">
+                <div class="admin-panel">
+                    <div class="panel-header">
+                        <h3>Inventory Management</h3>
+                        <button class="btn-primary small" onclick="openAddProduct()">
+                            <i class="fas fa-plus"></i> Add Product
+                        </button>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th>Monthly Rent</th>
+                                    <th>Deposit</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminProductTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="admin-panel">
+                    <div class="panel-header">
+                        <h3>Recent Orders</h3>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Product</th>
+                                    <th>Plan</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminOrderTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== ADD PRODUCT MODAL ===== -->
+    <!--
+        FIX: Removed <form> wrapper with onsubmit="addNewProduct(event)".
+             A bare <form> without action submits to the current URL on Enter / button click,
+             reloading the page and wiping all JS state. Since addNewProduct() never called
+             event.preventDefault(), any submit triggered a full page reload.
+             The button is now type="button" with a direct onclick — no form needed here.
+    -->
+    <div id="addProductModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal('addProductModal')">&times;</button>
+            <h2>Add New Product</h2>
+            <input type="text" id="newProductName" placeholder="Product Name" class="form-input" required />
+            <label for="newProductCategory">Category:</label>
+            <select id="newProductCategory" class="form-input" required>
+                <option value="">Select Category</option>
+                <option value="furniture">Furniture</option>
+                <option value="appliances">Appliances</option>
+                <option value="electronics">Electronics</option>
+            </select>
+            <input type="number" id="newProductRent" placeholder="Monthly Rent (₹)" class="form-input" min="1"
+                step="1" required />
+            <input type="number" id="newProductDeposit" placeholder="Security Deposit (₹)" class="form-input" min="0"
+                step="1" required />
+            <input type="number" id="newProductStock" placeholder="Stock Quantity" class="form-input" min="1"
+                step="1" required />
+            <button type="button" class="btn-primary full-width" onclick="addNewProduct()">Add Product</button>
+        </div>
+    </div>
+
+    <!-- ===== TESTIMONIALS ===== -->
+    <section class="testimonials-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Reviews</span>
+                <h2 class="section-title">What Renters Say</h2>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="stars">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p>"Moved to Bangalore for my job and furnished my entire flat in 2 days. Amazing service!"</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">RK</div>
+                        <div>
+                            <strong>Rahul Kumar</strong>
+                            <small>Software Engineer, Bangalore</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card featured">
+                    <div class="stars">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p>"The 6-month plan was perfect for my internship. Saved so much money compared to buying!"</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">PS</div>
+                        <div>
+                            <strong>Priya Sharma</strong>
+                            <small>Student, Hyderabad</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                    </div>
+                    <p>"Free relocation support was a lifesaver when I shifted cities. RentEase is the best!"</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">AM</div>
+                        <div>
+                            <strong>kartik kashyap</strong>
+                            <small>Working Professional, Delhi</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <i class="fas fa-couch"></i> RentEase
+                </div>
+                <p>Making urban living affordable, flexible, and sustainable through smart furniture rental
+                    solutions.</p>
+                <div class="social-links">
+                    <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
+                        aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                    <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
+                        aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="https://twitter.com" target="_blank" rel="noopener noreferrer"
+                        aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer"
+                        aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                </div>
+            </div>
+            <div class="footer-links">
+                <h4>Products</h4>
+                <a href="#" onclick="filterCategory('furniture')">Furniture</a>
+                <a href="#" onclick="filterCategory('appliances')">Appliances</a>
+                <a href="#" onclick="filterCategory('electronics')">Electronics</a>
+                <a href="#plans">Rental Plans</a>
+            </div>
+            <div class="footer-links">
+                <h4>Company</h4>
+                <a href="#">About Us</a>
+                <a href="#">How It Works</a>
+                <a href="#">Careers</a>
+                <a href="#">Blog</a>
+            </div>
+            <div class="footer-links">
+                <h4>Support</h4>
+                <a href="#" onclick="openModal('maintenanceModal')">Maintenance</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact Us</a>
+                <a href="#">Terms & Conditions</a>
+            </div>
+        </div>
+        <!--
+            FIX: footerYear is now set dynamically by JS in DOMContentLoaded.
+                 The hardcoded "2025" acts as a safe fallback if JS is disabled.
+        -->
+        <div class="footer-bottom">
+            <p>&copy; <span id="footerYear">2025</span> RentEase. All rights reserved. | Built for Unified Mentor
+                Project</p>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
